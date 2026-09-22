@@ -53,10 +53,10 @@ export function ProductForm({
                       replace
                       to={`/products/${handle}?${variantUriQuery}`}
                       style={{
-                        border: selected
-                          ? '1px solid black'
-                          : '1px solid transparent',
-                        opacity: available ? 1 : 0.3,
+                        borderColor: selected
+                          ? 'var(--brand-gold)'
+                          : 'rgba(245, 242, 234, 0.18)',
+                        opacity: available ? 1 : 0.35,
                       }}
                     >
                       <ProductOptionSwatch swatch={swatch} name={name} />
@@ -76,10 +76,10 @@ export function ProductForm({
                       }`}
                       key={option.name + name}
                       style={{
-                        border: selected
-                          ? '1px solid black'
-                          : '1px solid transparent',
-                        opacity: available ? 1 : 0.3,
+                        borderColor: selected
+                          ? 'var(--brand-gold)'
+                          : 'rgba(245, 242, 234, 0.18)',
+                        opacity: available ? 1 : 0.35,
                       }}
                       disabled={!exists}
                       onClick={() => {

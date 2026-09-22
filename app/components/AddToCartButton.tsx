@@ -16,22 +16,26 @@ export function AddToCartButton({
 }) {
   return (
     <CartForm route="/cart" inputs={{lines}} action={CartForm.ACTIONS.LinesAdd}>
-      {(fetcher: FetcherWithComponents<any>) => (
-        <>
-          <input
-            name="analytics"
-            type="hidden"
-            value={JSON.stringify(analytics)}
-          />
-          <button
-            type="submit"
-            onClick={onClick}
-            disabled={disabled ?? fetcher.state !== 'idle'}
-          >
-            {children}
-          </button>
-        </>
-      )}
+      {(fetcher: FetcherWithComponents<any>) => {
+        const isSubmitting = fetcher.state !== 'idle';
+        return (
+          <>
+            <input
+              name="analytics"
+              type="hidden"
+              value={JSON.stringify(analytics)}
+            />
+            <button
+              type="submit"
+              className={`add-to-cart-button${isSubmitting ? ' is-loading' : ''}`}
+              onClick={onClick}
+              disabled={disabled ?? isSubmitting}
+            >
+              {isSubmitting ? 'Adding…' : children}
+            </button>
+          </>
+        );
+      }}
     </CartForm>
   );
 }

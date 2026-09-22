@@ -80,6 +80,9 @@ body {
 
 body > main {
   margin: 0 1rem 1rem 1rem;
+  /* The header is a fixed overlay (see components/Header in app.css) so it
+     no longer reserves space in normal flow — reserve it here instead. */
+  padding-top: var(--header-height);
 }
 
 section {

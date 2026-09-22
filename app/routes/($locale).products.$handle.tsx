@@ -1,4 +1,5 @@
 import {redirect, useLoaderData} from 'react-router';
+import {useId, useState} from 'react';
 import type {Route} from './+types/products.$handle';
 import {
   getSelectedProductOptions,
@@ -95,30 +96,33 @@ export default function Product() {
     selectedOrFirstAvailableVariant: selectedVariant,
   });
 
-  const {title, descriptionHtml} = product;
+  const {title, description, descriptionHtml, vendor} = product;
 
   return (
-    <div className="product">
-      <ProductImage image={selectedVariant?.image} />
-      <div className="product-main">
-        <h1>{title}</h1>
-        <ProductPrice
-          price={selectedVariant?.price}
-          compareAtPrice={selectedVariant?.compareAtPrice}
-        />
-        <br />
-        <ProductForm
-          productOptions={productOptions}
-          selectedVariant={selectedVariant}
-        />
-        <br />
-        <br />
-        <p>
-          <strong>Description</strong>
-        </p>
-        <br />
-        <div dangerouslySetInnerHTML={{__html: descriptionHtml}} />
-        <br />
+    <div className="product-page">
+      <div className="product">
+        <ProductImage product={product} selectedVariant={selectedVariant} />
+        <div className="product-main">
+          {vendor && <span className="product-vendor">{vendor}</span>}
+          <h1 className="product-title">{title}</h1>
+          <ProductPrice
+            price={selectedVariant?.price}
+            compareAtPrice={selectedVariant?.compareAtPrice}
+          />
+          {description && <p className="product-lede">{description}</p>}
+          <ProductForm
+            productOptions={productOptions}
+            selectedVariant={selectedVariant}
+          />
+          {descriptionHtml && (
+            <ProductAccordion title="Product details">
+              <div
+                className="product-details-html"
+                dangerouslySetInnerHTML={{__html: descriptionHtml}}
+              />
+            </ProductAccordion>
+          )}
+        </div>
       </div>
       <Analytics.ProductView
         data={{
@@ -135,6 +139,41 @@ export default function Product() {
           ],
         }}
       />
+    </div>
+  );
+}
+
+/** Minimal, purely-presentational accordion for the details section — no
+ * business logic, just local open/close UI state. */
+function ProductAccordion({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) {
+  const [open, setOpen] = useState(true);
+  const panelId = useId();
+
+  return (
+    <div className="product-accordion">
+      <button
+        type="button"
+        className="product-accordion-trigger"
+        aria-expanded={open}
+        aria-controls={panelId}
+        onClick={() => setOpen((value) => !value)}
+      >
+        {title}
+        <span className="product-accordion-icon" aria-hidden="true">
+          {open ? '−' : '+'}
+        </span>
+      </button>
+      {open && (
+        <div id={panelId} className="product-accordion-panel">
+          {children}
+        </div>
+      )}
     </div>
   );
 }

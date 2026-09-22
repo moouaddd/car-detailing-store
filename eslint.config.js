@@ -244,4 +244,14 @@ export default [
       'react-hooks/rules-of-hooks': 'off',
     },
   },
+  {
+    // react-three-fiber renders three.js objects as JSX intrinsics
+    // (mesh, spotLight, cylinderGeometry, ...) whose props are three.js
+    // constructor/attribute names, not DOM/React props — eslint-plugin-react
+    // doesn't know about them, so this rule doesn't apply here.
+    files: ['app/components/hero/**/*.{ts,tsx}'],
+    rules: {
+      'react/no-unknown-property': 'off',
+    },
+  },
 ];

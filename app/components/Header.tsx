@@ -1,4 +1,4 @@
-import {Suspense} from 'react';
+import {Suspense, useEffect, useState} from 'react';
 import {Await, NavLink, useAsyncValue} from 'react-router';
 import {
   type CartViewPayload,
@@ -23,19 +23,43 @@ export function Header({
   cart,
   publicStoreDomain,
 }: HeaderProps) {
-  const {shop, menu} = header;
+  const {menu} = header;
+  // Solid/blurred once the page scrolls, transparent over the hero at the
+  // very top. rAF-throttled so the scroll listener never fires more than
+  // once per frame.
+  const [scrolled, setScrolled] = useState(false);
+
+  useEffect(() => {
+    let ticking = false;
+    const updateScrolled = () => {
+      setScrolled(window.scrollY > 4);
+      ticking = false;
+    };
+    const handleScroll = () => {
+      if (ticking) return;
+      ticking = true;
+      requestAnimationFrame(updateScrolled);
+    };
+    handleScroll();
+    window.addEventListener('scroll', handleScroll, {passive: true});
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
   return (
-    <header className="header">
-      <NavLink prefetch="intent" to="/" style={activeLinkStyle} end>
-        <strong>{shop.name}</strong>
-      </NavLink>
-      <HeaderMenu
-        menu={menu}
-        viewport="desktop"
-        primaryDomainUrl={header.shop.primaryDomain.url}
-        publicStoreDomain={publicStoreDomain}
-      />
-      <HeaderCtas isLoggedIn={isLoggedIn} cart={cart} />
+    <header className={`header${scrolled ? ' header--solid' : ''}`}>
+      <div className="header-inner">
+        <NavLink prefetch="intent" to="/" end className="header-logo">
+          ALZARA
+          <span className="header-logo-sub">Detailing</span>
+        </NavLink>
+        <HeaderMenu
+          menu={menu}
+          viewport="desktop"
+          primaryDomainUrl={header.shop.primaryDomain.url}
+          publicStoreDomain={publicStoreDomain}
+        />
+        <HeaderCtas isLoggedIn={isLoggedIn} cart={cart} />
+      </div>
     </header>
   );
 }
@@ -61,7 +85,7 @@ export function HeaderMenu({
           end
           onClick={close}
           prefetch="intent"
-          style={activeLinkStyle}
+          className={navLinkClassName}
           to="/"
         >
           Home
@@ -79,12 +103,11 @@ export function HeaderMenu({
             : item.url;
         return (
           <NavLink
-            className="header-menu-item"
+            className={navLinkClassName}
             end
             key={item.id}
             onClick={close}
             prefetch="intent"
-            style={activeLinkStyle}
             to={url}
           >
             {item.title}
@@ -95,6 +118,10 @@ export function HeaderMenu({
   );
 }
 
+function navLinkClassName({isActive}: {isActive: boolean; isPending: boolean}) {
+  return `header-menu-item${isActive ? ' is-active' : ''}`;
+}
+
 function HeaderCtas({
   isLoggedIn,
   cart,
@@ -102,16 +129,38 @@ function HeaderCtas({
   return (
     <nav className="header-ctas" role="navigation">
       <HeaderMenuMobileToggle />
-      <NavLink prefetch="intent" to="/account" style={activeLinkStyle}>
-        <Suspense fallback="Sign in">
-          <Await resolve={isLoggedIn} errorElement="Sign in">
-            {(isLoggedIn) => (isLoggedIn ? 'Account' : 'Sign in')}
-          </Await>
-        </Suspense>
-      </NavLink>
+      <AccountLink isLoggedIn={isLoggedIn} />
       <SearchToggle />
       <CartToggle cart={cart} />
     </nav>
+  );
+}
+
+function AccountLink({isLoggedIn}: Pick<HeaderProps, 'isLoggedIn'>) {
+  return (
+    <Suspense fallback={<AccountIconLink label="Sign in" />}>
+      <Await
+        resolve={isLoggedIn}
+        errorElement={<AccountIconLink label="Sign in" />}
+      >
+        {(loggedIn) => (
+          <AccountIconLink label={loggedIn ? 'Account' : 'Sign in'} />
+        )}
+      </Await>
+    </Suspense>
+  );
+}
+
+function AccountIconLink({label}: {label: string}) {
+  return (
+    <NavLink
+      prefetch="intent"
+      to="/account"
+      className="header-icon-link"
+      aria-label={label}
+    >
+      <UserIcon />
+    </NavLink>
   );
 }
 
@@ -119,10 +168,11 @@ function HeaderMenuMobileToggle() {
   const {open} = useAside();
   return (
     <button
-      className="header-menu-mobile-toggle reset"
+      className="header-menu-mobile-toggle reset header-icon-link"
       onClick={() => open('mobile')}
+      aria-label="Open menu"
     >
-      <h3>☰</h3>
+      <MenuIcon />
     </button>
   );
 }
@@ -130,8 +180,12 @@ function HeaderMenuMobileToggle() {
 function SearchToggle() {
   const {open} = useAside();
   return (
-    <button className="reset" onClick={() => open('search')}>
-      Search
+    <button
+      className="reset header-icon-link"
+      onClick={() => open('search')}
+      aria-label="Search"
+    >
+      <SearchIcon />
     </button>
   );
 }
@@ -143,6 +197,8 @@ function CartBadge({count}: {count: number}) {
   return (
     <a
       href="/cart"
+      className="header-icon-link"
+      aria-label={`Cart (${count} items)`}
       onClick={(e) => {
         e.preventDefault();
         open('cart');
@@ -154,7 +210,8 @@ function CartBadge({count}: {count: number}) {
         } as CartViewPayload);
       }}
     >
-      Cart <span aria-label={`(items: ${count})`}>{count}</span>
+      <CartIcon />
+      {count > 0 && <span className="header-cart-badge">{count}</span>}
     </a>
   );
 }
@@ -173,6 +230,83 @@ function CartBanner() {
   const originalCart = useAsyncValue() as CartApiQueryFragment | null;
   const cart = useOptimisticCart(originalCart);
   return <CartBadge count={cart?.totalQuantity ?? 0} />;
+}
+
+function SearchIcon() {
+  return (
+    <svg
+      width="19"
+      height="19"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <circle cx="11" cy="11" r="7" />
+      <line x1="21" y1="21" x2="16.65" y2="16.65" />
+    </svg>
+  );
+}
+
+function CartIcon() {
+  return (
+    <svg
+      width="19"
+      height="19"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M3 6h2l2.4 12.2a2 2 0 0 0 2 1.8h8.2a2 2 0 0 0 2-1.6L21 9H6" />
+      <circle cx="10" cy="21.5" r="1" />
+      <circle cx="18" cy="21.5" r="1" />
+    </svg>
+  );
+}
+
+function UserIcon() {
+  return (
+    <svg
+      width="19"
+      height="19"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <circle cx="12" cy="8" r="4" />
+      <path d="M4 20c0-3.6 3.6-6 8-6s8 2.4 8 6" />
+    </svg>
+  );
+}
+
+function MenuIcon() {
+  return (
+    <svg
+      width="21"
+      height="21"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      aria-hidden="true"
+    >
+      <line x1="4" y1="7" x2="20" y2="7" />
+      <line x1="4" y1="12" x2="20" y2="12" />
+      <line x1="4" y1="17" x2="20" y2="17" />
+    </svg>
+  );
 }
 
 const FALLBACK_HEADER_MENU = {
@@ -216,16 +350,3 @@ const FALLBACK_HEADER_MENU = {
     },
   ],
 };
-
-function activeLinkStyle({
-  isActive,
-  isPending,
-}: {
-  isActive: boolean;
-  isPending: boolean;
-}) {
-  return {
-    fontWeight: isActive ? 'bold' : undefined,
-    color: isPending ? 'grey' : 'black',
-  };
-}
