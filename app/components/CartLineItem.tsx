@@ -1,6 +1,11 @@
 import type {CartLineUpdateInput} from '@shopify/hydrogen/storefront-api-types';
 import type {CartLayout, LineItemChildrenMap} from '~/components/CartMain';
-import {CartForm, Image, type OptimisticCartLine} from '@shopify/hydrogen';
+import {
+  CartForm,
+  Image,
+  Money,
+  type OptimisticCartLine,
+} from '@shopify/hydrogen';
 import {useVariantUrl} from '~/lib/variants';
 import {Link} from 'react-router';
 import {ProductPrice} from './ProductPrice';
@@ -38,7 +43,16 @@ export function CartLineItem({
     <li key={id} className="cart-line">
       <div className="cart-line-inner">
         {image && (
-          <div className="cart-line-media">
+          <Link
+            to={lineItemUrl}
+            prefetch="intent"
+            className="cart-line-media"
+            tabIndex={-1}
+            aria-hidden="true"
+            onClick={() => {
+              if (layout === 'aside') close();
+            }}
+          >
             <Image
               alt={title}
               aspectRatio="1/1"
@@ -47,7 +61,7 @@ export function CartLineItem({
               loading="lazy"
               width={100}
             />
-          </div>
+          </Link>
         )}
 
         <div className="cart-line-body">
@@ -62,7 +76,14 @@ export function CartLineItem({
           >
             <p className="cart-line-title">{product.title}</p>
           </Link>
-          <ProductPrice price={line?.cost?.totalAmount} />
+          <div className="cart-line-price">
+            <ProductPrice price={line?.cost?.totalAmount} />
+            {line.quantity > 1 && line.cost?.amountPerQuantity && (
+              <span className="cart-line-unit">
+                <Money as="span" data={line.cost.amountPerQuantity} /> / ud.
+              </span>
+            )}
+          </div>
           <ul className="cart-line-options">
             {selectedOptions
               .filter((option) => option.value !== 'Default Title')

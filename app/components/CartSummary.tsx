@@ -2,7 +2,8 @@ import type {CartApiQueryFragment} from 'storefrontapi.generated';
 import type {CartLayout} from '~/components/CartMain';
 import {CartForm, Money, type OptimisticCart} from '@shopify/hydrogen';
 import {useEffect, useId, useRef, useState} from 'react';
-import {useFetcher} from 'react-router';
+import {Link, useFetcher} from 'react-router';
+import {useAside} from '~/components/Aside';
 
 type CartSummaryProps = {
   cart: OptimisticCart<CartApiQueryFragment | null>;
@@ -17,6 +18,10 @@ export function CartSummary({cart, layout}: CartSummaryProps) {
   const discountCodeInputId = useId();
   const giftCardHeadingId = useId();
   const giftCardInputId = useId();
+  const {close} = useAside();
+  const hasCodes =
+    Boolean(cart?.discountCodes?.some((code) => code.applicable)) ||
+    Boolean(cart?.appliedGiftCards?.length);
 
   return (
     <div aria-labelledby={summaryId} className={className}>
@@ -33,20 +38,46 @@ export function CartSummary({cart, layout}: CartSummaryProps) {
           )}
         </dd>
       </dl>
-      <CartDiscounts
-        discountCodes={cart?.discountCodes}
-        discountsHeadingId={discountsHeadingId}
-        discountCodeInputId={discountCodeInputId}
-      />
-      <CartGiftCard
-        giftCardCodes={cart?.appliedGiftCards}
-        giftCardHeadingId={giftCardHeadingId}
-        giftCardInputId={giftCardInputId}
-      />
+      {/* Codes are optional for most shoppers: keep them folded away
+          unless one is already applied. */}
+      <details className="cart-codes" open={hasCodes || undefined}>
+        <summary>¿Tienes un código de descuento o tarjeta regalo?</summary>
+        <div className="cart-codes-body">
+          <CartDiscounts
+            discountCodes={cart?.discountCodes}
+            discountsHeadingId={discountsHeadingId}
+            discountCodeInputId={discountCodeInputId}
+          />
+          <CartGiftCard
+            giftCardCodes={cart?.appliedGiftCards}
+            giftCardHeadingId={giftCardHeadingId}
+            giftCardInputId={giftCardInputId}
+          />
+        </div>
+      </details>
       <CartCheckoutActions checkoutUrl={cart?.checkoutUrl} />
       <p className="cart-summary-note">
         Impuestos incluidos. El envío se calcula al finalizar la compra.
       </p>
+      <p className="cart-secure">
+        <svg viewBox="0 0 16 16" width="12" height="12" aria-hidden="true">
+          <path
+            fill="currentColor"
+            d="M8 1a3.5 3.5 0 0 0-3.5 3.5V6H4a1.5 1.5 0 0 0-1.5 1.5v6A1.5 1.5 0 0 0 4 15h8a1.5 1.5 0 0 0 1.5-1.5v-6A1.5 1.5 0 0 0 12 6h-.5V4.5A3.5 3.5 0 0 0 8 1Zm2 5H6V4.5a2 2 0 1 1 4 0V6Z"
+          />
+        </svg>
+        Pago seguro con el checkout de Shopify
+      </p>
+      {layout === 'aside' && (
+        <Link
+          to="/cart"
+          prefetch="intent"
+          className="cart-view-link"
+          onClick={close}
+        >
+          Ver carrito completo
+        </Link>
+      )}
     </div>
   );
 }
