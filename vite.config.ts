@@ -8,11 +8,15 @@ import tailwindcss from '@tailwindcss/vite';
 export default defineConfig({
   plugins: [tailwindcss(), hydrogen(), oxygen(), reactRouter()],
   resolve: {
-    alias: {
+    alias: [
       // Vite's native tsconfig path resolver does not cover JavaScript
       // projects that use jsconfig.json, so define Hydrogen's app alias here.
-      '~': fileURLToPath(new URL('./app', import.meta.url)),
-    },
+      {find: '~', replacement: fileURLToPath(new URL('./app', import.meta.url))},
+      // three-stdlib (via drei) imports fflate; in the SSR build the "node"
+      // export condition wins and pulls in `import 'module'`, which Oxygen's
+      // Workers runtime doesn't provide. The browser build has no Node deps.
+      {find: /^fflate$/, replacement: 'fflate/browser'},
+    ],
     tsconfigPaths: true,
   },
   build: {
