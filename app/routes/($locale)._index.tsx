@@ -9,6 +9,7 @@ import type {
 import {ProductItem} from '~/components/ProductItem';
 import {MockShopNotice} from '~/components/MockShopNotice';
 import {Hero3D} from '~/components/hero/Hero3D';
+import {ScrollFade, ScrollStagger} from '~/components/ScrollReveal';
 
 export const meta: Route.MetaFunction = () => {
   return [{title: 'Hydrogen | Home'}];
@@ -79,21 +80,23 @@ function FeaturedCollection({
   if (!collection) return null;
   const image = collection?.image;
   return (
-    <Link
-      className="featured-collection"
-      to={`/collections/${collection.handle}`}
-    >
-      {image && (
-        <div className="featured-collection-image">
-          <Image
-            data={image}
-            sizes="100vw"
-            alt={image.altText || collection.title}
-          />
-        </div>
-      )}
-      <h1>{collection.title}</h1>
-    </Link>
+    <ScrollFade>
+      <Link
+        className="featured-collection"
+        to={`/collections/${collection.handle}`}
+      >
+        {image && (
+          <div className="featured-collection-image">
+            <Image
+              data={image}
+              sizes="100vw"
+              alt={image.altText || collection.title}
+            />
+          </div>
+        )}
+        <h1>{collection.title}</h1>
+      </Link>
+    </ScrollFade>
   );
 }
 
@@ -111,13 +114,13 @@ function RecommendedProducts({
       <Suspense fallback={<div>Loading...</div>}>
         <Await resolve={products}>
           {(response) => (
-            <div className="recommended-products-grid">
+            <ScrollStagger className="recommended-products-grid">
               {response
                 ? response.products.nodes.map((product) => (
                     <ProductItem key={product.id} product={product} />
                   ))
                 : null}
-            </div>
+            </ScrollStagger>
           )}
         </Await>
       </Suspense>
