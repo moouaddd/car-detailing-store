@@ -1,18 +1,14 @@
 import {Await, useLoaderData, Link} from 'react-router';
 import type {Route} from './+types/_index';
 import {Suspense} from 'react';
-import {Image} from '@shopify/hydrogen';
-import type {
-  FeaturedCollectionFragment,
-  RecommendedProductsQuery,
-} from 'storefrontapi.generated';
+import type {RecommendedProductsQuery} from 'storefrontapi.generated';
 import {ProductItem} from '~/components/ProductItem';
 import {MockShopNotice} from '~/components/MockShopNotice';
 import {Hero3D} from '~/components/hero/Hero3D';
-import {ScrollFade, ScrollStagger} from '~/components/ScrollReveal';
+import {ScrollStagger} from '~/components/ScrollReveal';
 
 export const meta: Route.MetaFunction = () => {
-  return [{title: 'Hydrogen | Home'}];
+  return [{title: 'AutoCare Express | Cuidado de alta gama para tu coche'}];
 };
 
 export async function loader(args: Route.LoaderArgs) {
@@ -30,14 +26,8 @@ export async function loader(args: Route.LoaderArgs) {
  * needed to render the page. If it's unavailable, the whole page should 400 or 500 error.
  */
 async function loadCriticalData({context}: Route.LoaderArgs) {
-  const [{collections}] = await Promise.all([
-    context.storefront.query(FEATURED_COLLECTION_QUERY),
-    // Add other queries here, so that they are loaded in parallel
-  ]);
-
   return {
     isShopLinked: Boolean(context.env.PUBLIC_STORE_DOMAIN),
-    featuredCollection: collections.nodes[0],
   };
 }
 
@@ -66,37 +56,8 @@ export default function Homepage() {
     <div className="home">
       <Hero3D />
       {data.isShopLinked ? null : <MockShopNotice />}
-      <FeaturedCollection collection={data.featuredCollection} />
       <RecommendedProducts products={data.recommendedProducts} />
     </div>
-  );
-}
-
-function FeaturedCollection({
-  collection,
-}: {
-  collection: FeaturedCollectionFragment;
-}) {
-  if (!collection) return null;
-  const image = collection?.image;
-  return (
-    <ScrollFade>
-      <Link
-        className="featured-collection"
-        to={`/collections/${collection.handle}`}
-      >
-        {image && (
-          <div className="featured-collection-image">
-            <Image
-              data={image}
-              sizes="100vw"
-              alt={image.altText || collection.title}
-            />
-          </div>
-        )}
-        <h1>{collection.title}</h1>
-      </Link>
-    </ScrollFade>
   );
 }
 
@@ -110,8 +71,13 @@ function RecommendedProducts({
       className="recommended-products"
       aria-labelledby="recommended-products"
     >
-      <h2 id="recommended-products">Recommended Products</h2>
-      <Suspense fallback={<div>Loading...</div>}>
+      <div className="recommended-products-head">
+        <h2 id="recommended-products">Destacados</h2>
+        <Link to="/collections/all" className="recommended-products-link">
+          Ver catálogo <span aria-hidden="true">&rarr;</span>
+        </Link>
+      </div>
+      <Suspense fallback={null}>
         <Await resolve={products}>
           {(response) => (
             <ScrollStagger className="recommended-products-grid">
@@ -124,33 +90,9 @@ function RecommendedProducts({
           )}
         </Await>
       </Suspense>
-      <br />
     </section>
   );
 }
-
-const FEATURED_COLLECTION_QUERY = `#graphql
-  fragment FeaturedCollection on Collection {
-    id
-    title
-    image {
-      id
-      url
-      altText
-      width
-      height
-    }
-    handle
-  }
-  query FeaturedCollection($country: CountryCode, $language: LanguageCode)
-    @inContext(country: $country, language: $language) {
-    collections(first: 1, sortKey: UPDATED_AT, reverse: true) {
-      nodes {
-        ...FeaturedCollection
-      }
-    }
-  }
-` as const;
 
 const RECOMMENDED_PRODUCTS_QUERY = `#graphql
   fragment RecommendedProduct on Product {
@@ -169,6 +111,17 @@ const RECOMMENDED_PRODUCTS_QUERY = `#graphql
       altText
       width
       height
+    }
+    media(first: 1) {
+      nodes {
+        previewImage {
+          id
+          altText
+          url
+          width
+          height
+        }
+      }
     }
   }
   query RecommendedProducts ($country: CountryCode, $language: LanguageCode)

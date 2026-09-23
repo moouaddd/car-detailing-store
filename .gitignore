@@ -7,3 +7,7 @@ node_modules
 .env
 .shopify
 .react-router
+
+# Local work files, not part of the storefront
+/scrollcraft
+tsconfig.tsbuildinfo

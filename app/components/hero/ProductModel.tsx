@@ -9,8 +9,13 @@ import * as THREE from 'three';
  * `USE_PLACEHOLDER` below to swap it in — the rest of the scene (lighting,
  * tilt, float, shadows) does not need to change.
  */
-const MODEL_PATH = '/models/alzara-ceramic-shampoo.glb';
-const USE_PLACEHOLDER = true;
+const MODEL_PATH = '/models/wind-shield-pro.glb';
+const USE_PLACEHOLDER = false;
+
+// The GLB is exported uncompressed. Leaving drei's defaults on makes it spin up
+// the Meshopt WebAssembly decoder, which the storefront CSP blocks.
+const USE_DRACO = false;
+const USE_MESHOPT = false;
 
 // How far the bottle may tilt at the very edge of the hit zone (radians).
 // Kept modest on purpose — this should read as a light touch, not a spin.
@@ -77,11 +82,11 @@ export function ProductModel({pointerFine, reducedMotion}: ProductModelProps) {
         floatingRange={[-0.06, 0.06]}
       >
         {/* Scale lives on its own group so it never fights the tilt/float transforms above. */}
-        <group scale={1.25}>
+        <group scale={0.85}>
           {USE_PLACEHOLDER ? <PlaceholderBottle /> : <GLTFBottle />}
           {pointerFine && !reducedMotion && (
             <mesh
-              position={[0, 0.39, 0.55]}
+              position={[0, 0.4, 0.55]}
               onPointerMove={handlePointerMove}
               onPointerEnter={handlePointerEnter}
               onPointerLeave={handlePointerLeave}
@@ -89,7 +94,7 @@ export function ProductModel({pointerFine, reducedMotion}: ProductModelProps) {
               {/* Invisible hit zone sized to the bottle's silhouette — this is
                   what makes the tilt react to the bottle itself instead of
                   the whole screen. Not visible: opacity 0, no depth write. */}
-              <planeGeometry args={[1.3, 2.2]} />
+              <planeGeometry args={[0.8, 2.1]} />
               <meshBasicMaterial transparent opacity={0} depthWrite={false} />
             </mesh>
           )}
@@ -159,12 +164,12 @@ function PlaceholderBottle() {
  * here so the swap is a one-line change instead of a scene rewrite.
  */
 function GLTFBottle() {
-  const {scene} = useGLTF(MODEL_PATH);
+  const {scene} = useGLTF(MODEL_PATH, USE_DRACO, USE_MESHOPT);
   return <primitive object={scene} />;
 }
 
 // Only warm the GLTF cache once the real model exists — avoids a guaranteed
-// 404 fetch for /models/alzara-ceramic-shampoo.glb while the placeholder is active.
+// 404 fetch for the GLB while the placeholder is active.
 if (!USE_PLACEHOLDER) {
-  useGLTF.preload(MODEL_PATH);
+  useGLTF.preload(MODEL_PATH, USE_DRACO, USE_MESHOPT);
 }

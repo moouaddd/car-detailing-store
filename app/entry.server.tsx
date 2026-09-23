@@ -15,6 +15,16 @@ export default async function handleRequest(
   context: HydrogenRouterContextProvider,
 ) {
   const {nonce, header, NonceProvider} = createContentSecurityPolicy({
+    // GLTFLoader unpacks the textures embedded in .glb models into blob: URLs
+    // (fetched in Chrome, loaded as <img> elsewhere).
+    connectSrc: ['blob:'],
+    imgSrc: [
+      "'self'",
+      'blob:',
+      'data:',
+      'https://cdn.shopify.com',
+      'http://localhost:*',
+    ],
     shop: {
       checkoutDomain: context.env.PUBLIC_CHECKOUT_DOMAIN,
       storeDomain: context.env.PUBLIC_STORE_DOMAIN,

@@ -38,17 +38,19 @@ export function CartLineItem({
     <li key={id} className="cart-line">
       <div className="cart-line-inner">
         {image && (
-          <Image
-            alt={title}
-            aspectRatio="1/1"
-            data={image}
-            height={100}
-            loading="lazy"
-            width={100}
-          />
+          <div className="cart-line-media">
+            <Image
+              alt={title}
+              aspectRatio="1/1"
+              data={image}
+              height={100}
+              loading="lazy"
+              width={100}
+            />
+          </div>
         )}
 
-        <div>
+        <div className="cart-line-body">
           <Link
             prefetch="intent"
             to={lineItemUrl}
@@ -58,19 +60,19 @@ export function CartLineItem({
               }
             }}
           >
-            <p>
-              <strong>{product.title}</strong>
-            </p>
+            <p className="cart-line-title">{product.title}</p>
           </Link>
           <ProductPrice price={line?.cost?.totalAmount} />
-          <ul>
-            {selectedOptions.map((option) => (
-              <li key={option.name}>
-                <small>
-                  {option.name}: {option.value}
-                </small>
-              </li>
-            ))}
+          <ul className="cart-line-options">
+            {selectedOptions
+              .filter((option) => option.value !== 'Default Title')
+              .map((option) => (
+                <li key={option.name}>
+                  <small>
+                    {option.name}: {option.value}
+                  </small>
+                </li>
+              ))}
           </ul>
           <CartLineQuantity line={line} />
         </div>
@@ -79,7 +81,7 @@ export function CartLineItem({
       {lineItemChildren ? (
         <div>
           <p id={childrenLabelId} className="sr-only">
-            Line items with {product.title}
+            Productos incluidos con {product.title}
           </p>
           <ul aria-labelledby={childrenLabelId} className="cart-line-children">
             {lineItemChildren.map((childLine) => (
@@ -110,21 +112,22 @@ function CartLineQuantity({line}: {line: CartLine}) {
 
   return (
     <div className="cart-line-quantity">
-      <small>Quantity: {quantity} &nbsp;&nbsp;</small>
       <CartLineUpdateButton lines={[{id: lineId, quantity: prevQuantity}]}>
         <button
-          aria-label="Decrease quantity"
+          aria-label="Reducir cantidad"
           disabled={quantity <= 1 || !!isOptimistic}
           name="decrease-quantity"
           value={prevQuantity}
         >
-          <span>&#8722; </span>
+          <span>&#8722;</span>
         </button>
       </CartLineUpdateButton>
-      &nbsp;
+      <span className="cart-line-qty" aria-label={`Cantidad: ${quantity}`}>
+        {quantity}
+      </span>
       <CartLineUpdateButton lines={[{id: lineId, quantity: nextQuantity}]}>
         <button
-          aria-label="Increase quantity"
+          aria-label="Aumentar cantidad"
           name="increase-quantity"
           value={nextQuantity}
           disabled={!!isOptimistic}
@@ -132,7 +135,6 @@ function CartLineQuantity({line}: {line: CartLine}) {
           <span>&#43;</span>
         </button>
       </CartLineUpdateButton>
-      &nbsp;
       <CartLineRemoveButton lineIds={[lineId]} disabled={!!isOptimistic} />
     </div>
   );
@@ -157,8 +159,8 @@ function CartLineRemoveButton({
       action={CartForm.ACTIONS.LinesRemove}
       inputs={{lineIds}}
     >
-      <button disabled={disabled} type="submit">
-        Remove
+      <button disabled={disabled} type="submit" className="cart-line-remove">
+        Eliminar
       </button>
     </CartForm>
   );

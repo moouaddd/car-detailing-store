@@ -1,3 +1,4 @@
+import {useEffect, useState} from 'react';
 import {Link, useNavigate} from 'react-router';
 import {type MappedProductOptions} from '@shopify/hydrogen';
 import type {
@@ -8,6 +9,8 @@ import {AddToCartButton} from './AddToCartButton';
 import {useAside} from './Aside';
 import type {ProductFragment} from 'storefrontapi.generated';
 
+const MAX_QUANTITY = 10;
+
 export function ProductForm({
   productOptions,
   selectedVariant,
@@ -17,6 +20,14 @@ export function ProductForm({
 }) {
   const navigate = useNavigate();
   const {open} = useAside();
+  const [quantity, setQuantity] = useState(1);
+  const available = Boolean(selectedVariant?.availableForSale);
+
+  // A different variant starts from a fresh quantity.
+  useEffect(() => {
+    setQuantity(1);
+  }, [selectedVariant?.id]);
+
   return (
     <div className="product-form">
       {productOptions.map((option) => {
@@ -101,25 +112,53 @@ export function ProductForm({
           </div>
         );
       })}
-      <AddToCartButton
-        disabled={!selectedVariant || !selectedVariant.availableForSale}
-        onClick={() => {
-          open('cart');
-        }}
-        lines={
-          selectedVariant
-            ? [
-                {
-                  merchandiseId: selectedVariant.id,
-                  quantity: 1,
-                  selectedVariant,
-                },
-              ]
-            : []
-        }
-      >
-        {selectedVariant?.availableForSale ? 'Add to cart' : 'Sold out'}
-      </AddToCartButton>
+      <div className="product-purchase">
+        {available && (
+          <div className="quantity-stepper" role="group" aria-label="Cantidad">
+            <button
+              type="button"
+              aria-label="Reducir cantidad"
+              disabled={quantity <= 1}
+              onClick={() => setQuantity((q) => Math.max(1, q - 1))}
+            >
+              −
+            </button>
+            <span aria-live="polite">{quantity}</span>
+            <button
+              type="button"
+              aria-label="Aumentar cantidad"
+              disabled={quantity >= MAX_QUANTITY}
+              onClick={() => setQuantity((q) => Math.min(MAX_QUANTITY, q + 1))}
+            >
+              +
+            </button>
+          </div>
+        )}
+        <AddToCartButton
+          disabled={!available}
+          onClick={() => {
+            open('cart');
+          }}
+          lines={
+            selectedVariant
+              ? [
+                  {
+                    merchandiseId: selectedVariant.id,
+                    quantity,
+                    selectedVariant,
+                  },
+                ]
+              : []
+          }
+        >
+          {available ? 'Añadir al carrito' : 'Agotado'}
+        </AddToCartButton>
+      </div>
+      {!available && (
+        <p className="product-availability">
+          Este producto está agotado por ahora. Vuelve pronto.
+        </p>
+      )}
     </div>
   );
 }

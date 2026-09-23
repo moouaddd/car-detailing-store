@@ -1,5 +1,5 @@
-import {Suspense} from 'react';
-import {Canvas} from '@react-three/fiber';
+import {Suspense, useEffect} from 'react';
+import {Canvas, useThree} from '@react-three/fiber';
 import {ContactShadows, Environment, Lightformer} from '@react-three/drei';
 import {ProductModel} from './ProductModel';
 
@@ -7,6 +7,10 @@ interface HeroSceneProps {
   /** True only for real mice/trackpads (`pointer: fine`) — never on touch. */
   pointerFine: boolean;
   reducedMotion: boolean;
+  /** Pause rendering entirely (hero scrolled out of view). */
+  paused?: boolean;
+  /** Fires once the bottle has loaded and been drawn. */
+  onReady?: () => void;
 }
 
 /**
@@ -15,13 +19,19 @@ interface HeroSceneProps {
  * fetches an external HDRI — self-contained and fast, still gives the
  * bottle believable specular highlights like a product photo softbox.
  */
-export function HeroScene({pointerFine, reducedMotion}: HeroSceneProps) {
+export function HeroScene({
+  pointerFine,
+  reducedMotion,
+  paused = false,
+  onReady,
+}: HeroSceneProps) {
   return (
     <Canvas
+      frameloop={paused ? 'never' : 'always'}
       shadows
       dpr={[1, 1.5]}
       gl={{antialias: true, alpha: true, powerPreference: 'high-performance'}}
-      camera={{position: [0, 0.25, 4.0], fov: 31}}
+      camera={{position: [0, 0.5, 5.2], rotation: [0, 0, 0], fov: 31}}
     >
       {/* Soft base fill so the dark plastic never reads as a pure silhouette */}
       <ambientLight intensity={0.55} />
@@ -37,7 +47,11 @@ export function HeroScene({pointerFine, reducedMotion}: HeroSceneProps) {
       />
 
       {/* Cool fill from the opposite side, keeps shadows from going flat black */}
-      <directionalLight position={[-4, 1.5, 2]} intensity={0.45} color="#9fc2ff" />
+      <directionalLight
+        position={[-4, 1.5, 2]}
+        intensity={0.45}
+        color="#9fc2ff"
+      />
 
       {/* Rim/back light — separates the bottle silhouette from the dark backdrop */}
       <pointLight position={[-1.2, 1.6, -3]} intensity={2.2} color="#fff2da" />
@@ -70,8 +84,9 @@ export function HeroScene({pointerFine, reducedMotion}: HeroSceneProps) {
 
       <Suspense fallback={null}>
         <ProductModel pointerFine={pointerFine} reducedMotion={reducedMotion} />
+        {onReady && <ReadySignal onReady={onReady} />}
         <ContactShadows
-          position={[0, -0.85, 0]}
+          position={[0, -0.53, 0]}
           opacity={0.6}
           scale={6}
           blur={2.6}
@@ -80,4 +95,20 @@ export function HeroScene({pointerFine, reducedMotion}: HeroSceneProps) {
       </Suspense>
     </Canvas>
   );
+}
+
+/**
+ * Mounted inside the model's Suspense boundary, so it only runs once the GLB
+ * has loaded; waits for a real frame before swapping out the poster image.
+ */
+function ReadySignal({onReady}: {onReady: () => void}) {
+  const invalidate = useThree((state) => state.invalidate);
+  useEffect(() => {
+    invalidate();
+    const id = requestAnimationFrame(() =>
+      requestAnimationFrame(() => onReady()),
+    );
+    return () => cancelAnimationFrame(id);
+  }, [invalidate, onReady]);
+  return null;
 }

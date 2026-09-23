@@ -31,7 +31,7 @@ export function AddToCartButton({
               onClick={onClick}
               disabled={disabled ?? isSubmitting}
             >
-              {isSubmitting ? 'Adding…' : children}
+              {isSubmitting ? 'Añadiendo…' : children}
             </button>
           </>
         );

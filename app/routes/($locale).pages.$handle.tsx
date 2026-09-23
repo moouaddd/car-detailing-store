@@ -1,9 +1,13 @@
 import {useLoaderData} from 'react-router';
+import {ContactContent} from '~/components/ContactContent';
 import type {Route} from './+types/pages.$handle';
 import {redirectIfHandleIsLocalized} from '~/lib/redirect';
 
 export const meta: Route.MetaFunction = ({data}) => {
-  return [{title: `Hydrogen | ${data?.page.title ?? ''}`}];
+  return [
+    {title: `${data?.page.title ?? ''} | AutoCare Express`},
+    {name: 'description', content: data?.page.seo?.description ?? ''},
+  ];
 };
 
 export async function loader(args: Route.LoaderArgs) {
@@ -57,12 +61,22 @@ function loadDeferredData({context}: Route.LoaderArgs) {
 export default function Page() {
   const {page} = useLoaderData<typeof loader>();
 
+  const isContact = page.handle === 'contact' || page.handle === 'contacto';
+
   return (
-    <div className="page">
-      <header>
-        <h1>{page.title}</h1>
+    <div className="page-shell">
+      <header className="page-hero">
+        <span className="page-eyebrow">AutoCare Express</span>
+        <h1>{isContact ? 'Hablemos de tu coche.' : page.title}</h1>
       </header>
-      <main dangerouslySetInnerHTML={{__html: page.body}} />
+      {isContact ? (
+        <ContactContent bodyHtml={page.body} />
+      ) : (
+        <div
+          className="page-prose"
+          dangerouslySetInnerHTML={{__html: page.body}}
+        />
+      )}
     </div>
   );
 }

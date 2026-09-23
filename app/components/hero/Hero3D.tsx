@@ -1,4 +1,4 @@
-import {Suspense, lazy, useEffect, useLayoutEffect, useRef, useState} from 'react';
+import {Suspense, lazy, useCallback, useEffect, useRef, useState} from 'react';
 import {gsap} from 'gsap';
 import {ScrollTrigger} from 'gsap/ScrollTrigger';
 
@@ -6,17 +6,15 @@ const HeroScene = lazy(() =>
   import('./HeroScene').then((mod) => ({default: mod.HeroScene})),
 );
 
-// This component is SSR'd (only the WebGL canvas is client-only), so a plain
-// useLayoutEffect would warn on the server. Fall back to useEffect there.
-const useIsomorphicLayoutEffect =
-  typeof window === 'undefined' ? useEffect : useLayoutEffect;
+/** Static render of the 3D bottle, shown instantly while WebGL loads. */
+const POSTER_SRC = '/images/hero-bottle.webp';
 
 function hasWebGL(): boolean {
   try {
     const canvas = document.createElement('canvas');
     return Boolean(
       window.WebGLRenderingContext &&
-        (canvas.getContext('webgl') || canvas.getContext('experimental-webgl')),
+      (canvas.getContext('webgl') || canvas.getContext('experimental-webgl')),
     );
   } catch {
     return false;
@@ -32,20 +30,19 @@ export interface Hero3DProps {
 }
 
 export function Hero3D({
-  eyebrow = 'ALZARA DETAILING',
-  title = 'Engineered shine.\nBuilt to last.',
-  subtitle = 'Ceramic-grade care, formulated for cars that deserve more than a wash.',
-  ctaLabel = 'Shop ceramic care',
+  eyebrow = 'AUTOCARE EXPRESS',
+  title = 'Brillo de precisión.\nHecho para durar.',
+  subtitle = 'Cuidado de grado profesional, formulado para coches que merecen algo más que un lavado.',
+  ctaLabel = 'Descubrir productos',
   ctaHref = '/collections/all',
 }: Hero3DProps) {
   const sectionRef = useRef<HTMLElement>(null);
   const canvasWrapRef = useRef<HTMLDivElement>(null);
-  const eyebrowRef = useRef<HTMLSpanElement>(null);
-  const titleRef = useRef<HTMLHeadingElement>(null);
-  const subtitleRef = useRef<HTMLParagraphElement>(null);
-  const ctaRef = useRef<HTMLAnchorElement>(null);
 
   const [canRender3D, setCanRender3D] = useState(false);
+  const [sceneReady, setSceneReady] = useState(false);
+  const [inView, setInView] = useState(true);
+  const handleSceneReady = useCallback(() => setSceneReady(true), []);
   const [reducedMotion, setReducedMotion] = useState(false);
   const [pointerFine, setPointerFine] = useState(false);
 
@@ -54,7 +51,31 @@ export function Hero3D({
   // hydration mismatch). `pointer: fine` excludes touch/coarse pointers —
   // the bottle-tilt interaction should never try to run on mobile.
   useEffect(() => {
-    setCanRender3D(hasWebGL());
+    // The poster already shows the bottle, so the ~1 MB of 3D (engine +
+    // model) waits until the page is loaded and the browser is idle, and is
+    // skipped entirely for data-saver users.
+    const connection = (
+      navigator as Navigator & {
+        connection?: {saveData?: boolean};
+      }
+    ).connection;
+    let idleId: number | undefined;
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
+    const start3D = () => {
+      const run = () => setCanRender3D(hasWebGL());
+      if ('requestIdleCallback' in window) {
+        idleId = window.requestIdleCallback(run, {timeout: 1500});
+      } else {
+        timeoutId = globalThis.setTimeout(run, 300);
+      }
+    };
+    // Touch devices get no tilt interaction, so the 3D adds nothing the
+    // poster doesn't already show: keep the poster (with a CSS float) there.
+    const finePointer = window.matchMedia('(pointer: fine)').matches;
+    if (finePointer && !connection?.saveData) {
+      if (document.readyState === 'complete') start3D();
+      else window.addEventListener('load', start3D, {once: true});
+    }
 
     const motionMedia = window.matchMedia('(prefers-reduced-motion: reduce)');
     setReducedMotion(motionMedia.matches);
@@ -69,43 +90,24 @@ export function Hero3D({
     pointerMedia.addEventListener('change', handlePointerChange);
 
     return () => {
+      window.removeEventListener('load', start3D);
+      if (idleId !== undefined) window.cancelIdleCallback(idleId);
+      if (timeoutId !== undefined) globalThis.clearTimeout(timeoutId);
       motionMedia.removeEventListener('change', handleMotionChange);
       pointerMedia.removeEventListener('change', handlePointerChange);
     };
   }, []);
 
-  useIsomorphicLayoutEffect(() => {
-    const els = [
-      eyebrowRef.current,
-      titleRef.current,
-      subtitleRef.current,
-      ctaRef.current,
-      canvasWrapRef.current,
-    ].filter(Boolean) as HTMLElement[];
-    if (!els.length) return;
-
-    if (reducedMotion) {
-      gsap.set(els, {opacity: 1, y: 0, scale: 1});
-      return;
-    }
-
-    const ctx = gsap.context(() => {
-      gsap.set(els, {opacity: 0});
-      const tl = gsap.timeline({defaults: {ease: 'power3.out'}});
-      tl.fromTo(eyebrowRef.current, {y: 14}, {opacity: 1, y: 0, duration: 0.6}, 0.1)
-        .fromTo(titleRef.current, {y: 26}, {opacity: 1, y: 0, duration: 0.9}, 0.22)
-        .fromTo(subtitleRef.current, {y: 18}, {opacity: 1, y: 0, duration: 0.8}, 0.4)
-        .fromTo(ctaRef.current, {y: 14}, {opacity: 1, y: 0, duration: 0.7}, 0.55)
-        .fromTo(
-          canvasWrapRef.current,
-          {opacity: 0, scale: 0.94, y: 18},
-          {opacity: 1, scale: 1, y: 0, duration: 1.1},
-          0.3,
-        );
-    }, sectionRef);
-
-    return () => ctx.revert();
-  }, [reducedMotion]);
+  // Stop rendering the WebGL scene while the hero is scrolled out of view.
+  useEffect(() => {
+    const el = canvasWrapRef.current;
+    if (!el || !('IntersectionObserver' in window)) return;
+    const observer = new IntersectionObserver(([entry]) =>
+      setInView(entry.isIntersecting),
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
 
   // Simple exit fade as the hero scrolls out. `self.progress` (0-1) is the
   // hook point for a future scroll-driven 3D scene sequence.
@@ -135,27 +137,27 @@ export function Hero3D({
 
       <div className="relative z-10 order-2 flex w-full flex-col justify-center px-6 pb-12 pt-10 md:order-1 md:w-[45%] md:px-16 md:py-0 lg:px-20">
         <span
-          ref={eyebrowRef}
-          className="mb-5 text-xs font-semibold uppercase tracking-[0.4em] text-[#c9a24b]"
+          style={{'--hero-delay': '0.1s'} as React.CSSProperties}
+          className="hero3d-reveal mb-5 text-xs font-semibold uppercase tracking-[0.4em] text-[#c9a24b]"
         >
           {eyebrow}
         </span>
         <h1
-          ref={titleRef}
-          className="whitespace-pre-line text-4xl font-semibold leading-[1.02] tracking-[-0.02em] sm:text-5xl sm:leading-[0.98] md:text-7xl lg:text-[5.5rem]"
+          style={{'--hero-delay': '0.2s'} as React.CSSProperties}
+          className="hero3d-reveal whitespace-pre-line text-4xl font-semibold leading-[1.02] tracking-[-0.02em] sm:text-5xl sm:leading-[0.98] md:text-7xl lg:text-[5.5rem]"
         >
           {title}
         </h1>
         <p
-          ref={subtitleRef}
-          className="mt-7 max-w-md text-base leading-relaxed text-[#d8d5cc] md:text-lg"
+          style={{'--hero-delay': '0.35s'} as React.CSSProperties}
+          className="hero3d-reveal mt-7 max-w-md text-base leading-relaxed text-[#d8d5cc] md:text-lg"
         >
           {subtitle}
         </p>
         <a
-          ref={ctaRef}
           href={ctaHref}
-          className="mt-11 inline-flex w-fit items-center gap-3 bg-[#f5f2ea] px-8 py-4 text-sm font-semibold uppercase tracking-[0.22em] text-[#0a0b0d] transition-colors duration-300 hover:bg-[#c9a24b]"
+          style={{'--hero-delay': '0.5s'} as React.CSSProperties}
+          className="hero3d-reveal mt-11 inline-flex w-fit items-center gap-3 bg-[#f5f2ea] px-8 py-4 text-sm font-semibold uppercase tracking-[0.22em] text-[#0a0b0d] transition-colors duration-300 hover:bg-[#c9a24b]"
         >
           {ctaLabel}
           <span aria-hidden="true">&rarr;</span>
@@ -164,16 +166,29 @@ export function Hero3D({
 
       <div
         ref={canvasWrapRef}
-        className="relative order-1 h-[52vh] w-full md:order-2 md:h-full md:w-[55%]"
+        style={{'--hero-delay': '0.25s'} as React.CSSProperties}
+        className="hero3d-reveal hero3d-visual relative order-1 h-[52vh] w-full md:order-2 md:h-screen md:w-[55%]"
       >
         <div className="hero3d-canvas-glow" aria-hidden="true" />
-        {canRender3D ? (
-          <Suspense fallback={<div className="hero3d-loading" aria-hidden="true" />}>
-            <HeroScene pointerFine={pointerFine} reducedMotion={reducedMotion} />
-          </Suspense>
-        ) : (
-          <div className="hero3d-fallback" role="img" aria-label={eyebrow}>
-            <div className="hero3d-fallback-bottle" />
+        <img
+          src={POSTER_SRC}
+          alt={eyebrow}
+          width={484}
+          height={1100}
+          {...{fetchpriority: 'high'}}
+          decoding="async"
+          className={`hero3d-poster${sceneReady ? ' is-hidden' : ''}`}
+        />
+        {canRender3D && (
+          <div className={`hero3d-scene${sceneReady ? ' is-ready' : ''}`}>
+            <Suspense fallback={null}>
+              <HeroScene
+                pointerFine={pointerFine}
+                reducedMotion={reducedMotion}
+                paused={!inView}
+                onReady={handleSceneReady}
+              />
+            </Suspense>
           </div>
         )}
       </div>

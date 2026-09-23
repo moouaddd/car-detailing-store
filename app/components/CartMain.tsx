@@ -52,12 +52,12 @@ export function CartMain({layout, cart: originalCart}: CartMainProps) {
   return (
     <section
       className={className}
-      aria-label={layout === 'page' ? 'Cart page' : 'Cart drawer'}
+      aria-label={layout === 'page' ? 'Carrito' : 'Carrito lateral'}
     >
       <CartEmpty hidden={linesCount} layout={layout} />
       <div className="cart-details">
         <p id="cart-lines" className="sr-only">
-          Line items
+          Productos del carrito
         </p>
         <div>
           <ul aria-labelledby="cart-lines">
@@ -94,15 +94,19 @@ function CartEmpty({
 }) {
   const {close} = useAside();
   return (
-    <div hidden={hidden}>
-      <br />
-      <p>
-        Looks like you haven&rsquo;t added anything yet, let&rsquo;s get you
-        started!
+    <div hidden={hidden} className="cart-empty">
+      <span className="cart-eyebrow">Tu carrito</span>
+      <p className="cart-empty-title">Todavía no has añadido nada.</p>
+      <p className="cart-empty-text">
+        Descubre nuestros productos de detailing de grado profesional.
       </p>
-      <br />
-      <Link to="/collections" onClick={close} prefetch="viewport">
-        Continue shopping →
+      <Link
+        to="/collections/all"
+        onClick={close}
+        prefetch="viewport"
+        className="cart-button"
+      >
+        Ver catálogo <span aria-hidden="true">&rarr;</span>
       </Link>
     </div>
   );

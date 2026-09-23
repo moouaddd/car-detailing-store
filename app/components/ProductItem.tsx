@@ -18,7 +18,10 @@ export function ProductItem({
   loading?: 'eager' | 'lazy';
 }) {
   const variantUrl = useVariantUrl(product.handle);
-  const image = product.featuredImage;
+  // Products that only have a 3D model in Shopify have no featuredImage;
+  // fall back to the preview render Shopify generates for that media.
+  const image =
+    product.featuredImage ?? product.media?.nodes[0]?.previewImage ?? null;
   return (
     <Link
       className="product-item"
@@ -27,13 +30,15 @@ export function ProductItem({
       to={variantUrl}
     >
       {image && (
-        <Image
-          alt={image.altText || product.title}
-          aspectRatio="1/1"
-          data={image}
-          loading={loading}
-          sizes="(min-width: 45em) 400px, 100vw"
-        />
+        <div className="product-item-media">
+          <Image
+            alt={image.altText || product.title}
+            aspectRatio="1/1"
+            data={image}
+            loading={loading}
+            sizes="(min-width: 45em) 400px, 100vw"
+          />
+        </div>
       )}
       <h4>{product.title}</h4>
       <small>

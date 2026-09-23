@@ -49,8 +49,8 @@ export function Header({
     <header className={`header${scrolled ? ' header--solid' : ''}`}>
       <div className="header-inner">
         <NavLink prefetch="intent" to="/" end className="header-logo">
-          ALZARA
-          <span className="header-logo-sub">Detailing</span>
+          AutoCare
+          <span className="header-logo-sub">Express</span>
         </NavLink>
         <HeaderMenu
           menu={menu}
@@ -88,7 +88,7 @@ export function HeaderMenu({
           className={navLinkClassName}
           to="/"
         >
-          Home
+          Inicio
         </NavLink>
       )}
       {(menu || FALLBACK_HEADER_MENU).items.map((item) => {
@@ -114,6 +114,15 @@ export function HeaderMenu({
           </NavLink>
         );
       })}
+      <NavLink
+        className={navLinkClassName}
+        end
+        onClick={close}
+        prefetch="intent"
+        to="/estudio"
+      >
+        Estudio 3D
+      </NavLink>
     </nav>
   );
 }
